@@ -1,8 +1,7 @@
-﻿using CodingChallanges.Advent2023.Utils;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Transactions;
 
 namespace CodingChallanges.Advent2023;
 
@@ -454,8 +453,214 @@ public static partial class AdventOfCode
         return seq;
     }
 
+
+    /// <summary>
+    /// --- Day 11: Cosmic Expansion ---
+    /// The researcher has collected a bunch of data and compiled the data into a single giant image. 
+    /// The image includes empty space (.) and galaxies (#). For example:
+    ///   ...#......
+    ///   .......#..
+    ///   #.........
+    ///   ..........
+    ///   ......#...
+    ///   .#........
+    ///   .........#
+    ///   ..........
+    ///   .......#..
+    ///   #...#.....
+    /// The researcher is trying to figure out the sum of the lengths of the shortest path between
+    /// every pair of galaxies. However, there's a catch: the universe expanded in the time it took
+    /// the light from those galaxies to reach the observatory.
+    /// Due to something involving gravitational effects, only some space expands. In fact, the 
+    /// result is that any rows or columns that contain no galaxies should all actually be twice as big.
+    /// In the above example, three columns and two rows contain no galaxies:
+    ///      v  v  v
+    ///    ...#......
+    ///    .......#..
+    ///    #.........
+    ///   >..........<
+    ///    ......#...
+    ///    .#........
+    ///    .........#
+    ///   >..........<
+    ///    .......#..
+    ///    #...#.....
+    ///      ^  ^  ^
+    /// These rows and columns need to be twice as big; the result of cosmic expansion therefore
+    /// looks like this:
+    ///   ....#........
+    ///   .........#...
+    ///   #............
+    ///   .............
+    ///   .............
+    ///   ........#....
+    ///   .#...........
+    ///   ............#
+    ///   .............
+    ///   .............
+    ///   .........#...
+    ///   #....#.......
+    /// Equipped with this expanded universe, the shortest path between every pair of galaxies 
+    /// can be found. It can help to assign every galaxy a unique number:
+    ///   ....1........
+    ///   .........2...
+    ///   3............
+    ///   .............
+    ///   .............
+    ///   ........4....
+    ///   .5...........
+    ///   ............6
+    ///   .............
+    ///   .............
+    ///   .........7...
+    ///   8....9.......
+    /// In these 9 galaxies, there are 36 pairs. Only count each pair once; order within the pair
+    /// doesn't matter. For each pair, find any shortest path between the two galaxies using only 
+    /// steps that move up, down, left, or right exactly one . or # at a time. (The shortest path 
+    /// between two galaxies is allowed to pass through another galaxy.)
+    /// For example, here is one of the shortest paths between galaxies 5 and 9:
+    ///   ....1........
+    ///   .........2...
+    ///   3............
+    ///   .............
+    ///   .............
+    ///   ........4....
+    ///   .5...........
+    ///   .##.........6
+    ///   ..##.........
+    ///   ...##........
+    ///   ....##...7...
+    ///   8....9.......
+    /// This path has length 9 because it takes a minimum of nine steps to get from galaxy 5 to
+    /// galaxy 9 (the eight locations marked # plus the step onto galaxy 9 itself). Here are some 
+    /// other example shortest path lengths:
+    /// ]Between galaxy 1 and galaxy 7: 15
+    /// Between galaxy 3 and galaxy 6: 17
+    /// Between galaxy 8 and galaxy 9: 5
+    /// In this example, after expanding the universe, the sum of the shortest path between all
+    /// 36 pairs of galaxies is 374.
+    /// Expand the universe, then find the length of the shortest path between every pair of galaxies. 
+    /// What is the sum of these lengths?
+    /// Answer should be 9177603
+    /// </summary>+
     public static long Day11Part1()
     {
-        return 0;
+        var input = File.ReadAllLines("advent2023\\input\\11.txt");
+        var universe = Day11ExpandUniverse(input);
+        var galaxies = Day11GetGalaxies(universe);
+        var pairs = new List<(int id1, int id2)>();
+        
+        for (int i = 0; i < galaxies.Length - 1; i++)
+        {
+            for (int j = i + 1; j < galaxies.Length; j++)
+            {
+                pairs.Add((i,j));
+            }
+        }
+
+        var distances = new List<int>();
+
+        foreach (var pair in pairs)
+        {
+            var galaxyStart = galaxies[pair.id1];
+            var galaxyEnd = galaxies[pair.id2];
+            distances.Add(Math.Abs(galaxyEnd.r - galaxyStart.r) + Math.Abs(galaxyEnd.c - galaxyStart.c));
+        }
+
+        return distances.Sum();
+    }
+
+    /// <summary>
+    /// Now, instead of the expansion you did before, make each empty row or column one million
+    /// times larger. That is, each empty row should be replaced with 1000000 empty rows, and 
+    /// each empty column should be replaced with 1000000 empty columns.
+    /// Expand the universe according to these new rules, then find the length of the shortest
+    /// path between every pair of galaxies.What is the sum of these lengths?
+    /// Answer should be 632003913611
+    /// </summary>
+    public static long Day11Part2()
+    {
+        var input = File.ReadAllLines("advent2023\\input\\11.txt");
+        var universe = input.Select(r => r.ToArray()).ToArray();
+
+        var galaxies = Day11GetGalaxies(universe);
+        var pairs = new List<(int id1, int id2)>();
+
+        for (int i = 0; i < galaxies.Length - 1; i++)
+        {
+            for (int j = i + 1; j < galaxies.Length; j++)
+            {
+                pairs.Add((i, j));
+            }
+        }
+
+        long theDistance = 0;
+
+        foreach (var pair in pairs)
+        {
+            var galaxyStart = galaxies[pair.id1];
+            var galaxyEnd = galaxies[pair.id2];
+            var rStr = galaxyStart.r;
+            var cStr = galaxyStart.c;
+            var rEnd = galaxyEnd.r;
+            var cEnd = galaxyEnd.c;
+            if (cStr > cEnd)
+            {
+                var tmpr = cStr;
+                cStr = cEnd;
+                cEnd = tmpr;
+            }
+            var rExpand = universe[rStr..rEnd].Where(row => row.All(c => c == '.'));
+            var cExpand = new List<int>();
+            for (int i = cStr; i < cEnd; i++)
+            {
+                if (universe.All(row => row[i] == '.'))
+                    cExpand.Add(i);
+            }
+            var distance = Math.Abs(galaxyEnd.r - galaxyStart.r) + Math.Abs(galaxyEnd.c - galaxyStart.c);
+            distance += 999_999 * rExpand.Count() + 999_999 * cExpand.Count();
+            theDistance += distance;
+        }
+
+        return theDistance;
+    }
+
+    private static (int r, int c)[] Day11GetGalaxies(char[][] universe)
+    {
+        var galaxies = new List<(int r, int c)>();
+        for (int r = 0; r < universe.Length; r++)
+        {
+            for (int c = 0; c < universe[r].Length; c++)
+            {
+                if (universe[r][c] == '#')
+                    galaxies.Add((r, c));
+            }
+        }
+        return galaxies.ToArray();
+    }
+
+    private static char[][] Day11ExpandUniverse(string[] input)
+    {
+        var universe = input.Select(r => r.ToList()).ToList();
+
+        for (int r = 0; r < universe.Count; r++)
+        {
+            if (universe[r].All(c => c == '.'))
+            {
+                var insertableRow = universe[r].ToList();
+                universe.Insert(r, insertableRow);
+                r++;
+            }
+        }
+        for (int c = 0; c < universe.First().Count; c++)
+        {
+            if (universe.All(r => r[c] == '.'))
+            {
+                universe.ForEach(r => r.Insert(c, '.'));
+                c++;
+            }
+        }
+
+        return universe.Select(l => l.ToArray()).ToArray();
     }
 }

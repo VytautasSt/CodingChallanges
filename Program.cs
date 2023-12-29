@@ -7,7 +7,7 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        var rz = AdventOfCode.Day11Part1();
+        var rz = AdventOfCode.Day11Part2();
         Console.WriteLine(rz);
     }
 }
